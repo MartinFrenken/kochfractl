@@ -3,6 +3,7 @@ package fun3kochfractalfx;
 import calculate.*;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -11,6 +12,7 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.image.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.GridPane;
@@ -23,7 +25,7 @@ import javafx.stage.Stage;
  * Modified for FUN3 by Gertjan Schouten
  */
 public class FUN3KochFractalFX extends Application {
-    
+
     // Zoom and drag
     private double zoomTranslateX = 0.0;
     private double zoomTranslateY = 0.0;
@@ -48,7 +50,12 @@ public class FUN3KochFractalFX extends Application {
     private Label labelCalcText;
     private Label labelDraw;
     private Label labelDrawText;
-    
+    public Label bottomProgressPercentage;
+    public Label leftProgressPercentage;
+    public Label rightProgressPercentage;
+    public Label bottomProgressTotal;
+    public Label leftProgressTotal;
+    public Label rightProgressTotal;
     // Koch panel and its size
     private Canvas kochPanel;
     private final int kpWidth = 500;
@@ -58,10 +65,16 @@ public class FUN3KochFractalFX extends Application {
     private int counter = 0;
     private static final int THRESHOLD = 200_000;
     private final WritableImage image = new WritableImage(kpWidth, kpHeight);
+    //ProgressBars
+    public ProgressBar bottomProgress = new ProgressBar();
+    public ProgressBar leftProgress = new ProgressBar();
+    public ProgressBar rightProgress = new ProgressBar();
+
 
     @Override
     public void start(Stage primaryStage) {
-       
+
+
         // Define grid pane
         GridPane grid;
         grid = new GridPane();
@@ -105,11 +118,32 @@ public class FUN3KochFractalFX extends Application {
         buttonIncreaseLevel.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
+
                 increaseLevelButtonActionPerformed(event);
+
             }
         });
-        grid.add(buttonIncreaseLevel, 3, 6);
 
+        grid.add(buttonIncreaseLevel, 3, 6);
+        bottomProgress = new ProgressBar();
+        leftProgress = new ProgressBar();
+        rightProgress = new ProgressBar();
+        bottomProgressPercentage = new Label("-");
+        rightProgressPercentage = new Label("-");
+        leftProgressPercentage = new Label("-");
+        bottomProgressTotal = new Label("-");
+        rightProgressTotal = new Label("-");
+        leftProgressTotal = new Label("-");
+
+        grid.add(bottomProgress,4,7);
+        grid.add(rightProgress,4,8);
+        grid.add(leftProgress,4,9);
+        grid.add(bottomProgressPercentage,5,7);
+        grid.add(rightProgressPercentage,5,8);
+        grid.add(leftProgressPercentage,5,9);
+        grid.add(bottomProgressTotal,6,7);
+        grid.add(rightProgressTotal,6,8);
+        grid.add(leftProgressTotal,6,9);
         // Button to decrease level of Koch fractal
         Button buttonDecreaseLevel = new Button();
         buttonDecreaseLevel.setText("Decrease Level");
@@ -161,11 +195,27 @@ public class FUN3KochFractalFX extends Application {
         // Create Koch manager and set initial level
         resetZoom();
         kochManager = new KochManager(this);
-        kochManager.changeLevel(currentLevel);
+
+            Platform.runLater(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        kochManager.changeLevel(currentLevel);
+                        kochManager.update();
+                    }
+                    catch (Exception e)
+                        {
+                        }
+                }
+            });
+
+
+
+
         
         // Create the scene and add the grid pane
         Group root = new Group();
-        Scene scene = new Scene(root, kpWidth+50, kpHeight+170);
+        Scene scene = new Scene(root, kpWidth+50, kpHeight+300);
         root.getChildren().add(grid);
         
         // Define title and assign the scene for main window
@@ -235,14 +285,26 @@ public class FUN3KochFractalFX extends Application {
     }
     
     private void increaseLevelButtonActionPerformed(ActionEvent event) {
+
         if (currentLevel < 12) {
             // resetZoom();
             currentLevel++;
             labelLevel.setText("Level: " + currentLevel);
+
             kochManager.changeLevel(currentLevel);
+
+
         }
     } 
-    
+    public void showGraphics()
+    {
+        Platform.runLater(
+                () -> {
+               //    kochManager.update();
+                }
+        );
+
+    }
     private void decreaseLevelButtonActionPerformed(ActionEvent event) {
         if (currentLevel > 1) {
             // resetZoom();
@@ -269,7 +331,7 @@ public class FUN3KochFractalFX extends Application {
             }
             zoomTranslateX = (int) (event.getX() - originalPointClickedX * zoom);
             zoomTranslateY = (int) (event.getY() - originalPointClickedY * zoom);
-            kochManager.drawEdges();
+            requestDrawEdges();
         }
     }                                      
 
@@ -278,7 +340,7 @@ public class FUN3KochFractalFX extends Application {
         zoomTranslateY = zoomTranslateY + event.getY() - lastDragY;
         lastDragX = event.getX();
         lastDragY = event.getY();
-        kochManager.drawEdges();
+        requestDrawEdges();
     }
 
     private void kochPanelMousePressed(MouseEvent event) {
@@ -303,6 +365,11 @@ public class FUN3KochFractalFX extends Application {
                 e.Y2 * zoom + zoomTranslateY,
                 e.color);
     }
+    @Override
+    public void stop()
+    {
+        kochManager.pool.shutdown();
+    }
 
     /**
      * The main() method is ignored in correctly deployed JavaFX application.
@@ -312,7 +379,9 @@ public class FUN3KochFractalFX extends Application {
      *
      * @param args the command line arguments
      */
+
     public static void main(String[] args) {
         launch(args);
     }
+
 }
